@@ -1,0 +1,8 @@
+streamlit
+pandas
+sqlalchemy
+python-dotenv
+plotly
+langchain==0.1.16
+langchain-community==0.0.32
+langchain-groq==0.0.1

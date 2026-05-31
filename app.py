@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import os
+import re
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from langchain_groq import ChatGroq
@@ -48,32 +49,52 @@ if file:
 
     if submit and question:
 
-        # ---------------- SQL GENERATION ---------------- #
-        chain = create_sql_query_chain(llm, db)
-
-        raw_response = chain.invoke({
-            "question": question + " Return ONLY SQL query."
-        })
-
-        # ---------------- CLEAN SQL ---------------- #
-        sql_query = raw_response
-
-        if "SQLQuery:" in sql_query:
-            sql_query = sql_query.split("SQLQuery:")[-1]
-
-        if "SQLResult:" in sql_query:
-            sql_query = sql_query.split("SQLResult:")[0]
-
-        if "Answer:" in sql_query:
-            sql_query = sql_query.split("Answer:")[0]
-
-        sql_query = sql_query.strip()
-
-        st.subheader("🧠 Generated SQL")
-        st.code(sql_query)
-
-        # ---------------- EXECUTION ---------------- #
         try:
+            # ---------------- SQL GENERATION ---------------- #
+            chain = create_sql_query_chain(llm, db)
+
+            raw_response = chain.invoke({
+                "question": question + " Return ONLY SQL query. Use table name 'data'."
+            })
+
+            # ---------------- DEBUG ---------------- #
+            st.subheader("🔍 Raw LLM Response")
+            st.code(str(raw_response))
+
+            # ---------------- CLEAN SQL ---------------- #
+            sql_query = str(raw_response)
+
+            # Extract SQL from markdown blocks
+            match = re.search(
+                r"```sql\s*(.*?)\s*```",
+                sql_query,
+                re.DOTALL | re.IGNORECASE
+            )
+
+            if match:
+                sql_query = match.group(1)
+
+            # Remove markdown remnants
+            sql_query = sql_query.replace("```sql", "")
+            sql_query = sql_query.replace("```", "")
+
+            # Remove LangChain labels
+            if "SQLQuery:" in sql_query:
+                sql_query = sql_query.split("SQLQuery:")[-1]
+
+            if "SQLResult:" in sql_query:
+                sql_query = sql_query.split("SQLResult:")[0]
+
+            if "Answer:" in sql_query:
+                sql_query = sql_query.split("Answer:")[0]
+
+            sql_query = sql_query.strip()
+
+            # ---------------- SHOW CLEAN SQL ---------------- #
+            st.subheader("🧠 Generated SQL")
+            st.code(sql_query, language="sql")
+
+            # ---------------- EXECUTION ---------------- #
             result_df = pd.read_sql(sql_query, engine)
 
             st.subheader("📊 Result")
@@ -81,11 +102,18 @@ if file:
 
             # ---------------- AUTO VISUALIZATION ---------------- #
             if len(result_df.columns) >= 2:
-                col1 = result_df.columns[0]
-                col2 = result_df.columns[1]
 
-                fig = px.bar(result_df, x=col1, y=col2)
-                st.plotly_chart(fig)
+                x_col = result_df.columns[0]
+                y_col = result_df.columns[1]
+
+                fig = px.bar(
+                    result_df,
+                    x=x_col,
+                    y=y_col,
+                    title=f"{y_col} by {x_col}"
+                )
+
+                st.plotly_chart(fig, use_container_width=True)
 
         except Exception as e:
             st.error(f"❌ Error: {e}")

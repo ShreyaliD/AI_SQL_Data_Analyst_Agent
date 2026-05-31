@@ -53,7 +53,12 @@ if file:
         chain = create_sql_query_chain(llm, db)
 
         raw_response = chain.invoke({
-            "question": question + " Return ONLY SQL query."
+            "question": question + """
+            Return ONLY a valid SQLite SQL query.
+            Use table name 'data'.
+            Do not add LIMIT unless the user asks for top N records.
+            Do not include explanations, markdown, SQLQuery, SQLResult, or Answer.
+            """
         })
 
         # ---------------- CLEAN SQL ---------------- #

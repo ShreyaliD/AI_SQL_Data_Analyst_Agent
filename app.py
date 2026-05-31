@@ -58,11 +58,11 @@ if file:
             })
 
             # ---------------- DEBUG ---------------- #
-            st.subheader("🔍 Raw LLM Response")
-            st.code(str(raw_response))
+            #st.subheader("🔍 Raw LLM Response")
+            #st.code(str(raw_response))
 
             # ---------------- CLEAN SQL ---------------- #
-            sql_query = str(raw_response)
+            #sql_query = str(raw_response)
 
             # Extract SQL from markdown blocks
             match = re.search(
